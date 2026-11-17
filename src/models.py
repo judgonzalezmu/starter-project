@@ -52,5 +52,7 @@ class TriageResult:
     severity: SeverityLevel
     component: str
     rationale: str
+    recommended_team: str
+    duplicate_group_key: str
     consistency_ratio: float = 1.0
 

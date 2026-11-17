@@ -1,20 +1,15 @@
 """Motor determinista de clasificación y enrutamiento de incidentes (IncidentOps).
 
-NOTA PEDAGÓGICA (Semana 1 — Enfoque 100% AI for Software Engineering):
-Este módulo implementa las reglas de negocio para clasificar reportes entrantes y
-asignarlos a un equipo de ingeniería (`Backend-Core`, `Platform-SRE`, `Data-DBA`,
-`Security-IAM`).
-
-Actualmente presenta deuda técnica que los estudiantes diagnosticarán y refactorizarán
-asistidos por IA (usando Context Engineering, Few-Shot, Chain-of-Thought y Self-Consistency):
-1. Clasificación frágil con cadenas `if/elif` acopladas y sensibles a palabras aisladas
-   (p. ej., cualquier mensaje con la palabra "hoy" se clasifica erróneamente como `P0`).
-2. No asigna el equipo responsable (`recommended_team`) ni genera una clave de
-   correlación (`duplicate_group_key`) para detectar incidentes repetidos del mismo
-   componente.
+Clasifica reportes por alcance e impacto (no por keywords sueltas), asigna el equipo
+de guardia (`Backend-Core`, `Platform-SRE`, `Data-DBA`, `Security-IAM`) y genera
+`duplicate_group_key` para correlacionar fallas repetidas.
 """
 
+from __future__ import annotations
+
 import json
+import re
+import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
@@ -24,69 +19,318 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_DATA_PATH = PROJECT_ROOT / "data" / "sample_incidents.json"
 
 
+def _normalize(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"\s+", " ", text.casefold()).strip()
+
+
+def _contains(text: str, *phrases: str) -> bool:
+    return any(phrase in text for phrase in phrases)
+
+
+def _connection_pressure(text: str) -> bool:
+    """Detecta saturación explícita o porcentajes elevados de conexiones."""
+    explicit_pressure = _contains(
+        text,
+        "too many connections",
+        "pool agotado",
+        "conexiones agotadas",
+        "saturacion de conexiones",
+    )
+    percentages = (
+        float(match.replace(",", "."))
+        for match in re.findall(r"(\d+(?:[.,]\d+)?)\s*%", text)
+    )
+    high_utilization = any(90 <= value <= 100 for value in percentages)
+    connection_context = _contains(text, "conexion", "connection", "pool")
+    return explicit_pressure or (connection_context and high_utilization)
+
+
+def _latency_over_three_seconds(text: str) -> bool:
+    values = re.findall(
+        r"\b(\d+(?:[.,]\d+)?)\s*(?:segundos?|seconds?|secs?|s)\b",
+        text,
+    )
+    return any(float(value.replace(",", ".")) > 3 for value in values)
+
+
+def _large_dataset(text: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:10[., ]?000|10\s*k|10000)\s*(?:registros|filas|ordenes|orders|rows|records)",
+            text,
+        )
+    ) or _contains(text, "large dataset", "grandes volumenes", "gran volumen de datos")
+
+
 def classify_incident_report(incident_id: str, raw_text: str) -> TriageResult:
-    """Clasifica un reporte de incidente aplicando reglas heurísticas iniciales.
+    """Clasifica un reporte por alcance, riesgo y causa raíz probable."""
+    text = _normalize(raw_text)
 
-    DEUDA TÉCNICA INTENCIONAL:
-    - Evalúa palabras sueltas ("hoy", "urgente") antes de analizar el impacto real
-      (caída global vs. cuenta individual vs. entorno de staging).
-    - No normaliza componentes ni identifica el equipo de guardia correspondiente.
-    """
-    text_lower = raw_text.lower()
+    def result(
+        severity: SeverityLevel,
+        component: str,
+        team: str,
+        rationale: str,
+        duplicate_key: str | None = None,
+    ) -> TriageResult:
+        return TriageResult(
+            incident_id=incident_id,
+            severity=severity,
+            component=component,
+            rationale=rationale,
+            recommended_team=team,
+            duplicate_group_key=duplicate_key or f"UNIQUE-{incident_id}",
+            consistency_ratio=1.0,
+        )
 
-    # Bug de diseño: si un usuario dice "necesito acceder hoy" por su cuenta bloqueada,
-    # se dispara como P0 antes de verificar si es una caída global o un caso individual.
-    if "urgente" in text_lower or "hoy" in text_lower or "502" in text_lower:
-        severity: SeverityLevel = "P0"
-    elif "94%" in text_lower or "timeout" in text_lower:
-        severity = "P1"
-    elif "lenta" in text_lower or "segundos" in text_lower:
-        severity = "P2"
-    else:
-        severity = "P3"
+    payments = _contains(
+        text, "pago", "payment", "checkout", "cobro", "tarjeta", "pasarela"
+    )
+    reporting = _contains(
+        text, "report", "informe", "export", "excel", "listado", "dashboard", "historial"
+    )
+    database = _contains(text, "postgres", "database", "base de datos", "conexiones")
+    tls = _contains(text, "tls", "ssl", "certificado", "certificate")
+    auth = _contains(text, "login", "autentic", "ingresar", "cuenta", "account", "bloqueada")
+    cosmetic = _contains(text, "color", "boton", "button", "ui")
 
-    if "pago" in text_lower or "cobro" in text_lower or "tarjeta" in text_lower:
-        component = "payments-gateway"
-    elif "cuenta" in text_lower or "ingresar" in text_lower:
-        component = "auth-identity"
-    elif "postgresql" in text_lower or "conexiones" in text_lower:
-        component = "database-cluster"
-    elif "certificado" in text_lower or "tls" in text_lower:
-        component = "infra-certificates"
-    elif "botón" in text_lower or "color" in text_lower:
-        component = "frontend-ui"
-    else:
-        component = "reporting-api"
+    global_scope = _contains(
+        text,
+        "todos los comercios",
+        "ningun comercio",
+        "todos los usuarios",
+        "todos los clientes",
+        "a nuestros clientes",
+        "indisponibilidad general",
+        "caida total",
+        "global outage",
+    )
+    outage = _contains(
+        text,
+        "caido",
+        "caida",
+        "indisponib",
+        "sin servicio",
+        "no pueden",
+        "no funciona",
+        "unavailable",
+        "outage",
+        "502",
+        "bad gateway",
+    )
+    performance = _contains(
+        text,
+        "lent",
+        "latencia",
+        "latency",
+        "slow",
+        "demora",
+        "tarda",
+        "pensando",
+        "timeout",
+        "time out",
+    ) or _latency_over_three_seconds(text)
 
-    return TriageResult(
-        incident_id=incident_id,
-        severity=severity,
-        component=component,
-        rationale=f"Clasificación heurística legacy asignada a {component} ({severity}).",
+    # 1) Exposición crítica (IDOR / cross-tenant) tiene precedencia.
+    authorization_exposure = _contains(
+        text,
+        "idor",
+        "cross-tenant",
+        "cross tenant",
+        "entre tenants",
+        "otra organizacion",
+        "otra empresa",
+        "otro tenant",
+        "another tenant",
+        "company_id",
+        "tenant_id",
+    )
+    exposure_evidence = _contains(
+        text,
+        "acced",
+        "acceso",
+        "visualiz",
+        "facturas",
+        "datos",
+        "expos",
+        "autorizacion",
+        "authorization",
+        "pertenecientes",
+    )
+    if authorization_exposure and exposure_evidence:
+        return result(
+            "P0",
+            "reporting-api",
+            "Security-IAM",
+            "Exposición crítica de datos por autorización entre empresas o tenants.",
+        )
+
+    # 2) Pasarela de pagos con HTTP 502 (duplicados canónicos INC-1001/INC-1006).
+    if payments and "502" in text:
+        return result(
+            "P0",
+            "payments-gateway",
+            "Platform-SRE",
+            "HTTP 502 en la pasarela de pagos con afectación a comercios/clientes.",
+            "PAYMENTS-502-GATEWAY",
+        )
+
+    # 3) Base de datos / pool de conexiones.
+    if database or _connection_pressure(text):
+        pressure = _connection_pressure(text)
+        timeouts = _contains(text, "timeout", "time out", "tiempo de espera")
+        if global_scope and outage:
+            severity: SeverityLevel = "P0"
+            rationale = "Indisponibilidad general asociada a la base de datos."
+        elif pressure or timeouts:
+            severity = "P1"
+            rationale = (
+                "Saturación de conexiones o timeouts de base de datos "
+                "con degradación grave o riesgo inmediato."
+            )
+        elif performance:
+            severity = "P2"
+            rationale = "Base de datos operativa con degradación de rendimiento."
+        else:
+            severity = "P3"
+            rationale = "Caso de base de datos con alcance limitado."
+        return result(severity, "database-cluster", "Data-DBA", rationale)
+
+    # 4) Certificados TLS / staging.
+    if tls:
+        preventive = _contains(
+            text,
+            "staging",
+            "preventiv",
+            "vencer",
+            "vence",
+            "expira",
+            "rotacion",
+            "renovacion",
+        )
+        if global_scope and outage:
+            return result(
+                "P0",
+                "infra-certificates",
+                "Platform-SRE",
+                "Fallo TLS con indisponibilidad general.",
+            )
+        if preventive:
+            return result(
+                "P3",
+                "infra-certificates",
+                "Platform-SRE",
+                "Mantenimiento preventivo de certificados o afectación de staging.",
+            )
+        return result(
+            "P3",
+            "infra-certificates",
+            "Platform-SRE",
+            "Revisión de certificados con alcance limitado.",
+        )
+
+    # 5) Autenticación / bloqueo de cuenta individual.
+    if auth:
+        if global_scope and outage:
+            return result(
+                "P0",
+                "auth-identity",
+                "Security-IAM",
+                "Autenticación indisponible para todos los usuarios.",
+            )
+        return result(
+            "P3",
+            "auth-identity",
+            "Security-IAM",
+            "Incidencia de autenticación o bloqueo de cuenta individual.",
+        )
+
+    # 6) UX cosmética (antes de reportes: "exportar CSV" + color de botón no es P2).
+    if cosmetic and not outage and not _large_dataset(text):
+        return result(
+            "P3",
+            "frontend-ui",
+            "Backend-Core",
+            "Solicitud cosmética de interfaz sin impacto funcional.",
+        )
+
+    # 7) Reportes / exportación / listados.
+    if reporting:
+        if global_scope and outage:
+            return result(
+                "P0",
+                "reporting-api",
+                "Backend-Core",
+                "Servicio de reportes con indisponibilidad general.",
+            )
+        if performance and _large_dataset(text):
+            return result(
+                "P2",
+                "reporting-api",
+                "Backend-Core",
+                "Degradación de reportes con conjuntos grandes de datos.",
+                "LARGE-DATASET-REPORT-PERFORMANCE",
+            )
+        if performance:
+            return result(
+                "P2",
+                "reporting-api",
+                "Backend-Core",
+                "Reporte o exportación utilizable con degradación de rendimiento.",
+            )
+        return result(
+            "P3",
+            "reporting-api",
+            "Backend-Core",
+            "Incidencia de reportes con alcance limitado.",
+        )
+
+    # 8) Pagos sin 502 / plataforma genérica.
+    if payments:
+        severity = (
+            "P0"
+            if global_scope and outage
+            else "P1"
+            if outage
+            else "P2"
+            if performance
+            else "P3"
+        )
+        return result(
+            severity,
+            "payments-gateway",
+            "Platform-SRE",
+            "Impacto en pagos evaluado por alcance, interrupción y degradación.",
+        )
+
+    return result(
+        "P3",
+        "frontend-ui",
+        "Backend-Core",
+        "Caso individual o cosmético según la evidencia disponible.",
     )
 
 
 def _run_triage_audit() -> None:
-    """Ejecuta el motor actual sobre los 10 incidentes de prueba para evidenciar fallos."""
+    """Ejecuta el motor sobre los 10 incidentes de prueba."""
     incidents: List[Dict[str, str]] = json.loads(SAMPLE_DATA_PATH.read_text(encoding="utf-8"))
 
-    print("=== Auditoría del Motor de Triaje Actual (`src/triage_rules.py`) ===")
-    print(f"{'ID':<10} | {'Sev.':<5} | {'Componente':<20} | {'Extracto del Reporte'}")
-    print("-" * 88)
-    for item in incidents:
-        result = classify_incident_report(item["id"], item["raw_text"])
-        snippet = item["raw_text"][:45] + "..." if len(item["raw_text"]) > 45 else item["raw_text"]
-        print(f"{result.incident_id:<10} | {result.severity:<5} | {result.component:<20} | {snippet}")
-    print("-" * 88)
+    print("=== Auditoría del Motor de Triaje (`src/triage_rules.py`) ===")
     print(
-        "Observa los problemas en la salida actual:\n"
-        "  - INC-1002 (cuenta individual bloqueada) y INC-1009 (exportación Excel lenta)\n"
-        "    se clasifican como P0 solo porque el usuario escribió la palabra 'hoy'.\n"
-        "  - INC-1007 (fuga crítica de facturas entre empresas por company_id en URL)\n"
-        "    se clasifica como P3 porque no contiene las palabras 'urgente' ni '502'."
+        f"{'ID':<10} | {'Sev.':<5} | {'Team':<14} | {'Duplicate Key':<34} | {'Componente'}"
     )
+    print("-" * 110)
+    for item in incidents:
+        triage = classify_incident_report(item["id"], item["raw_text"])
+        print(
+            f"{triage.incident_id:<10} | {triage.severity:<5} | "
+            f"{triage.recommended_team:<14} | {triage.duplicate_group_key:<34} | "
+            f"{triage.component}"
+        )
+    print("-" * 110)
 
 
 if __name__ == "__main__":
     _run_triage_audit()
-
