@@ -1,0 +1,14 @@
+---
+description: Convenciones Python para el código de dominio en src/
+globs: src/**/*.py
+alwaysApply: false
+---
+
+# Python `src/`
+
+- Imports de paquete: `from src.models import ...` (no asumir `from .models` salvo que ya exista).
+- `SeverityLevel` es `Literal["P0","P1","P2","P3"]` — usar strings `"P0"`, no `.P0` / `.value`.
+- SLA P2/P3: solo minutos hábiles Lun–Vie `[08:00, 18:00)`; P0/P1 calendario 24/7 (ADR-002).
+- Triaje: asignar `recommended_team` y `duplicate_group_key`; no clasificar P0 solo por `"hoy"`/`"urgente"`.
+- Mantener funciones puras cuando sea viable; fallar rápido con `ValueError` claro (p. ej. fin < creación).
+- No introducir libs de business-hours ni frameworks; stdlib primero.

@@ -1,0 +1,14 @@
+---
+description: Contexto y convenciones globales de IncidentOps (Semana 1 ISIA)
+alwaysApply: true
+---
+
+# IncidentOps — reglas globales
+
+- Proyecto pedagógico Python + `uv`. No añadir dependencias sin pedirlo.
+- Entregables clave: `CONTEXT_LOG.md`, `docs/adr/002-*.md`, `src/triage_rules.py`, `src/sla_calculator.py`, `src/models.py`.
+- Preferir contexto curado (`<lsp_context>`, ADR destilado) frente a pegar todo el repo.
+- No reabrir decisiones de ADR-002 ni del consenso de triaje salvo que el usuario lo pida.
+- Verificación mínima tras cambios de dominio:
+  - `uv run python -m src.triage_rules`
+  - `uv run python -m src.sla_calculator`

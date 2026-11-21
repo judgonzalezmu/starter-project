@@ -1,0 +1,13 @@
+---
+description: Formato y disciplina de ADRs en docs/adr
+globs: docs/adr/**/*.md
+alwaysApply: false
+---
+
+# ADRs
+
+- Seguir la estructura de `docs/adr/000-template.md`: contexto, opciones, decisión, consecuencias.
+- Incluir diagrama Mermaid válido (`flowchart` / `stateDiagram-v2`) cuando explique flujo o estados.
+- Documentar opciones descartadas de forma breve; no reabrir debates ya cerrados en el cuerpo de la decisión.
+- Estado / fecha / autor / componentes afectados en el encabezado.
+- Cambios de arquitectura de SLA o triaje deben referenciar o actualizar el ADR correspondiente.
