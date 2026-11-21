@@ -8,6 +8,8 @@ Exponer la clasificación y el enrutamiento determinista de reportes **sin persi
 
 **Resultado:** un operador o sistema puede clasificar un reporte al momento y obtener severidad, componente, equipo sugerido y señal de agrupación de duplicados, sin guardar el incidente.
 
+**Spec:** [`specs/001-triage-endpoint-manual.md`](../specs/001-triage-endpoint-manual.md)
+
 ## H002 — Resumen de incidentes activos
 
 Permitir consultar incidentes **actualmente activos**, incumplimientos de SLA y filtrado por componente, desde **web** y **terminal**.
