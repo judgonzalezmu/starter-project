@@ -13,9 +13,9 @@ import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
-from src.models import SeverityLevel, TriageResult
+from src.domain.models import SeverityLevel, TriageResult
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SAMPLE_DATA_PATH = PROJECT_ROOT / "data" / "sample_incidents.json"
 
 
@@ -167,14 +167,14 @@ def classify_incident_report(incident_id: str, raw_text: str) -> TriageResult:
             "Exposición crítica de datos por autorización entre empresas o tenants.",
         )
 
-    # 2) Pasarela de pagos con HTTP 502 (duplicados canónicos INC-1001/INC-1006).
+    # 2) Pasarela de pagos con HTTP 502 (duplicados canónicos Spec 001).
     if payments and "502" in text:
         return result(
             "P0",
             "payments-gateway",
-            "Platform-SRE",
+            "Backend-Core",
             "HTTP 502 en la pasarela de pagos con afectación a comercios/clientes.",
-            "PAYMENTS-502-GATEWAY",
+            "payments-gateway:http-502-outage",
         )
 
     # 3) Base de datos / pool de conexiones.
@@ -231,7 +231,7 @@ def classify_incident_report(incident_id: str, raw_text: str) -> TriageResult:
             "Revisión de certificados con alcance limitado.",
         )
 
-    # 5) Autenticación / bloqueo de cuenta individual.
+    # 5) Autenticación / bloqueo de cuenta individual (Spec 001: P2; "hoy" no eleva a P0).
     if auth:
         if global_scope and outage:
             return result(
@@ -241,7 +241,7 @@ def classify_incident_report(incident_id: str, raw_text: str) -> TriageResult:
                 "Autenticación indisponible para todos los usuarios.",
             )
         return result(
-            "P3",
+            "P2",
             "auth-identity",
             "Security-IAM",
             "Incidencia de autenticación o bloqueo de cuenta individual.",
@@ -317,7 +317,7 @@ def _run_triage_audit() -> None:
     """Ejecuta el motor sobre los 10 incidentes de prueba."""
     incidents: List[Dict[str, str]] = json.loads(SAMPLE_DATA_PATH.read_text(encoding="utf-8"))
 
-    print("=== Auditoría del Motor de Triaje (`src/triage_rules.py`) ===")
+    print("=== Auditoría del Motor de Triaje (`src/domain/triage_rules.py`) ===")
     print(
         f"{'ID':<10} | {'Sev.':<5} | {'Team':<14} | {'Duplicate Key':<34} | {'Componente'}"
     )

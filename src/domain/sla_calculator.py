@@ -7,7 +7,7 @@ P2/P3 solo acumulan intersección con jornadas Lun–Vie [08:00, 18:00).
 from datetime import date, datetime, timedelta, time
 from typing import Dict, List, Tuple
 
-from src.models import Incident, SLAEvaluation, SLARule, SeverityLevel
+from src.domain.models import Incident, SLAEvaluation, SLARule, SeverityLevel
 
 SLA_POLICY_TABLE: Dict[SeverityLevel, SLARule] = {
     "P0": SLARule(severity="P0", max_resolution_minutes=60, operates_24x7=True),

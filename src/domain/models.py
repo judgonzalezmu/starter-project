@@ -55,4 +55,3 @@ class TriageResult:
     recommended_team: str
     duplicate_group_key: str
     consistency_ratio: float = 1.0
-
