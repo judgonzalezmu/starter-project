@@ -1,23 +1,20 @@
 <!--
 Sync Impact Report
-- Version change: (unversioned template) → 1.0.0
+- Version change: 1.0.0 → 1.1.0
 - Modified principles:
-  - [PRINCIPLE_1_NAME] → I. Deterministic Domain Nucleus (NON-NEGOTIABLE)
-  - [PRINCIPLE_2_NAME] → II. Strict Hexagonal Architecture (ADR-003)
-  - [PRINCIPLE_3_NAME] → III. Technical Governance and Quality Gates
-  - [PRINCIPLE_4_NAME] / [PRINCIPLE_5_NAME] → consolidated into the three
-    IncidentOps pillars (user-specified count) plus dedicated invariant /
-    precedence sections below
-- Added sections:
-  - Domain Business Invariants
-  - Conflict Precedence and Compliance
-- Removed sections: N/A (initial formal adoption from Spec Kit scaffold)
+  - III. Technical Governance and Quality Gates → III. Technical Governance
+    and Quality Gates (persistence norm expanded; title unchanged)
+  - I. Deterministic Domain Nucleus → unchanged rule; SQL-driver examples now
+    name sqlite3 and psycopg so the new driver cannot enter the nucleus
+- Added sections: none
+- Removed sections: none
 - Follow-up TODOs:
-  - TODO(ADR-001): Persistence rule cites ADR-001 (SQLite3 stdlib, no heavy
-    ORMs), but `docs/adr/` currently has no `001-*.md` file — author or locate
-    that ADR so the citation resolves.
-  - `docs/constitution.md` remains an informal mirror; Spec Kit official source
-    of truth is this file (alignment of the docs copy is out of scope here).
+  - ADR-004's file header still says Estado Propuesto. This amendment treats
+    the decision as approved (2026-11-24). Updating that Estado is outside
+    this command.
+  - ADR-001 still has no file under docs/adr/. The active persistence rule is
+    ADR-004; the missing historical file is non-blocking.
+  - docs/constitution.md remains an informal mirror and was not updated.
 -->
 
 # IncidentOps Constitution
@@ -30,9 +27,9 @@ Business rules MUST live exactly once in the domain nucleus under `src/domain/`,
 in `models.py`, `triage_rules.py`, and `sla_calculator.py`. Adapters (REST, CLI,
 future MCP, persistence, or any other channel) MUST NOT reimplement triage, SLA
 evaluation, lifecycle states, or duplicate grouping. Domain modules MUST remain
-pure: no FastAPI, Typer, Pydantic transport schemas, SQL drivers, or other
-infrastructure imports. Product requirements MUST NOT be invented outside this
-constitution, `docs/ROADMAP.md`, or accepted ADRs.
+pure: no FastAPI, Typer, Pydantic transport schemas, SQL drivers (`sqlite3`,
+`psycopg`), or other infrastructure imports. Product requirements MUST NOT be
+invented outside this constitution, `docs/ROADMAP.md`, or accepted ADRs.
 
 **Rationale**: One deterministic core keeps Spec 001 and ADR-002 contracts
 identical across every delivery surface and prevents divergent severity, team
@@ -64,7 +61,7 @@ stable core.
 | Runtime | Python **≥ 3.10**, managed with **`uv`**. |
 | REST | **FastAPI** + **Pydantic v2** only in inbound adapters; never in domain. |
 | CLI | **Typer** only in inbound adapters. |
-| Persistence | **SQLite3** from the Python stdlib, **without heavy ORMs**, per **ADR-001**, until a dedicated ADR authorizes another engine. Outbound persistence MUST remain swappable through **`DATABASE_URL`**. |
+| Persistence | Dual **SQLite / PostgreSQL**, **no ORM**, per **ADR-004** (approved 2026-11-24). **SQLite3** stdlib serves `sqlite:///`. **PostgreSQL** uses **`psycopg[binary]`** (driver only) for `postgresql://`. The outbound factory MUST select the engine solely from **`DATABASE_URL`**. ADR-004 partially supersedes ADR-001's "stdlib sqlite3 only, no external dependencies" rule. Heavy ORMs remain forbidden. |
 | Hexagonal lint | Static boundary verification with Ruff is mandatory: `uv run ruff check src/` MUST pass. |
 | Specification | Acceptance scenarios MUST use BDD form (`Given` / `When` / `Then`). |
 | Tests | Automated acceptance is mandatory via `uv run pytest -v`. Domain and application MUST be verifiable without starting the web stack or a real database when the scenario allows. |
@@ -73,6 +70,8 @@ stable core.
 
 **Rationale**: A fixed pedagogical stack plus enforceable gates (Ruff frontiers,
 BDD pytest) prevent silent erosion of hexagonal boundaries and domain purity.
+`psycopg[binary]` is the only authorized persistence dependency beyond the
+stdlib, and only inside outbound adapters.
 
 ## Domain Business Invariants
 
@@ -100,13 +99,15 @@ Compliance review expectations:
 
 - Pull requests that touch domain, application, or adapters MUST verify
   dependency direction (adapters → application → domain).
-- Reviewers MUST confirm domain purity (no framework/SQL imports in
-  `src/domain/`).
+- Reviewers MUST confirm domain purity (no framework or SQL-driver imports in
+  `src/domain/`, including `sqlite3` and `psycopg`).
+- Reviewers MUST confirm the outbound factory selects SQLite or PostgreSQL
+  only from `DATABASE_URL`, and that no ORM is introduced.
 - Merges that affect triage, SLA, ports, or adapters MUST leave
   `uv run ruff check src/` and `uv run pytest -v` green.
-- Complexity that bypasses ports, duplicates use cases per channel, or hardcodes
-  persistence engines MUST be rejected unless justified by a new ADR and a
-  constitution amendment when governance rules change.
+- Complexity that bypasses ports, duplicates use cases per channel, or
+  hardcodes a persistence engine MUST be rejected unless justified by a new ADR
+  and a constitution amendment when governance rules change.
 
 ## Governance
 
@@ -126,4 +127,4 @@ governance. Amendments MUST:
 Guidance for day-to-day implementation remains in `AGENTS.md`; this document
 defines non-negotiable rules those guides MUST NOT contradict.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-23
+**Version**: 1.1.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-24
