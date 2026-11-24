@@ -1,0 +1,14 @@
+extend = "../../pyproject.toml"
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[lint.flake8-tidy-imports.banned-api]
+fastapi = { msg = "La aplicación no depende de FastAPI." }
+typer = { msg = "La aplicación no depende de Typer." }
+pydantic = { msg = "La aplicación no depende de esquemas Pydantic." }
+uvicorn = { msg = "La aplicación no depende de uvicorn." }
+sqlite3 = { msg = "La aplicación no accede a SQLite." }
+sqlalchemy = { msg = "La aplicación no depende de un ORM." }
+httpx = { msg = "La aplicación no depende de clientes HTTP." }
+"src.adapters" = { msg = "La aplicación no importa adaptadores." }

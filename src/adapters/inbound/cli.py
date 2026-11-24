@@ -1,4 +1,4 @@
-"""Adaptador inbound CLI (Typer) para triaje y auditoría de muestras."""
+"""Adaptador inbound CLI (Typer) para triaje, resumen y auditoría."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from pathlib import Path
 
 import typer
 
-from src.application.services import IncidentService, ValidationError
+from src.adapters.inbound.api.schemas import ActiveIncidentsSummaryResponse
+from src.adapters.outbound.factory import create_incident_repository
+from src.application.services import IncidentService, ValidationError, parse_reference_time
 from src.domain.triage_rules import SAMPLE_DATA_PATH, classify_incident_report
 
-app = typer.Typer(help="IncidentOps CLI — triaje determinista sin persistencia.")
+app = typer.Typer(help="IncidentOps CLI — triaje y resumen de incidentes activos.")
 
 
 @app.command("triage")
@@ -26,6 +28,34 @@ def triage(
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(json.dumps(asdict(result), ensure_ascii=False))
+
+
+@app.command("summary")
+def summary(
+    component: str | None = typer.Option(
+        None,
+        "--component",
+        help="Componente exacto. Omitido, vacío o solo espacios: todos los activos.",
+    ),
+    reference_time: str | None = typer.Option(
+        None,
+        "--reference-time",
+        help="Instante ISO-8601 naive. Omitido: momento de la consulta.",
+    ),
+) -> None:
+    """Imprime el resumen de incidentes activos en JSON por stdout."""
+    try:
+        parsed = parse_reference_time(reference_time)
+        service = IncidentService(create_incident_repository())
+        result = service.get_active_incidents_summary(
+            component_filter=component,
+            reference_time=parsed,
+        )
+    except ValidationError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    payload = ActiveIncidentsSummaryResponse.model_validate(result).model_dump()
+    typer.echo(json.dumps(payload, ensure_ascii=False))
 
 
 @app.command("audit")

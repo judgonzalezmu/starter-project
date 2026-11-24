@@ -15,7 +15,7 @@ Backend Python de **IncidentOps** (gestión de incidentes, triaje y SLA) usado c
 | `src/adapters/inbound/api/` | FastAPI: `create_app()`, `POST /api/v1/incidents/triage`, `GET /health` |
 | `src/adapters/inbound/cli.py` | Typer: subcomandos `triage` y `audit` |
 | `src/context_audit.py` | Auditoría de tokens (`tiktoken`) — fuerza bruta / grep / LSP |
-| `src/incident_repository.py` | SQLite + benchmark (deuda N+1 intencional en demos) |
+| `src/incident_repository.py` | Entrypoint del benchmark; delega en `SQLiteIncidentRepository` (JOIN, sin N+1) |
 | `data/sample_incidents.json` | 10 incidentes de prueba de triaje |
 | `specs/001-triage-endpoint-manual.md` | Aceptación H001 (triaje multi-interfaz) |
 | `docs/adr/` | ADRs (`000-template.md`, `002-…`, `003-arquitectura-hexagonal.md`) |

@@ -1,0 +1,15 @@
+extend = "../../pyproject.toml"
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[lint.flake8-tidy-imports.banned-api]
+fastapi = { msg = "El dominio no depende de FastAPI." }
+typer = { msg = "El dominio no depende de Typer." }
+pydantic = { msg = "El dominio no depende de esquemas Pydantic." }
+uvicorn = { msg = "El dominio no depende de uvicorn." }
+sqlite3 = { msg = "El dominio no accede a SQLite." }
+sqlalchemy = { msg = "El dominio no depende de un ORM." }
+httpx = { msg = "El dominio no depende de clientes HTTP." }
+"src.application" = { msg = "El dominio no importa la capa de aplicación." }
+"src.adapters" = { msg = "El dominio no importa adaptadores." }

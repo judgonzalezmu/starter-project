@@ -27,11 +27,11 @@ description: "Task list for H002 active incidents summary"
 
 **Purpose**: Activar la frontera Ruff y el paquete outbound sin dependencias nuevas
 
-- [ ] T001 [P] Crear el paquete outbound vacío en `src/adapters/outbound/__init__.py` según la estructura de `specs/002-active-incidents-summary/plan.md`
-- [ ] T002 [P] Añadir `[tool.ruff.lint]` con `select = ["E4", "E7", "E9", "F", "TID"]` en `pyproject.toml`
-- [ ] T003 [P] Crear `src/domain/ruff.toml` con `extend = "../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de fastapi, typer, pydantic, uvicorn, sqlite3, sqlalchemy, httpx, `src.application` y `src.adapters` según `specs/002-active-incidents-summary/research.md`
-- [ ] T004 [P] Crear `src/application/ruff.toml` con `extend = "../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de fastapi, typer, pydantic, uvicorn, sqlite3, sqlalchemy, httpx y `src.adapters` según `specs/002-active-incidents-summary/research.md`
-- [ ] T005 [P] Crear `src/adapters/inbound/ruff.toml` con `extend = "../../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de sqlite3, sqlalchemy y `src.adapters.outbound.sqlite_repository` según `specs/002-active-incidents-summary/research.md`
+- [X] T001 [P] Crear el paquete outbound vacío en `src/adapters/outbound/__init__.py` según la estructura de `specs/002-active-incidents-summary/plan.md`
+- [X] T002 [P] Añadir `[tool.ruff.lint]` con `select = ["E4", "E7", "E9", "F", "TID"]` en `pyproject.toml`
+- [X] T003 [P] Crear `src/domain/ruff.toml` con `extend = "../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de fastapi, typer, pydantic, uvicorn, sqlite3, sqlalchemy, httpx, `src.application` y `src.adapters` según `specs/002-active-incidents-summary/research.md`
+- [X] T004 [P] Crear `src/application/ruff.toml` con `extend = "../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de fastapi, typer, pydantic, uvicorn, sqlite3, sqlalchemy, httpx y `src.adapters` según `specs/002-active-incidents-summary/research.md`
+- [X] T005 [P] Crear `src/adapters/inbound/ruff.toml` con `extend = "../../../pyproject.toml"`, `ban-relative-imports = "parents"` y `banned-api` de sqlite3, sqlalchemy y `src.adapters.outbound.sqlite_repository` según `specs/002-active-incidents-summary/research.md`
 
 ---
 
@@ -41,11 +41,11 @@ description: "Task list for H002 active incidents summary"
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase
 
-- [ ] T007 [P] Declarar los dataclasses `ActiveIncidentView` y `ActiveIncidentsSummary` y la función `parse_reference_time` en `src/application/services.py` según data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (`None` si el argumento viene omitido; `datetime.fromisoformat` si es naive; `ValidationError` si está vacío, si trae desplazamiento o si `fromisoformat` falla)
-- [ ] T008 Definir `IncidentRepositoryPort` con `@runtime_checkable` y los métodos `save_incident`, `get_incident`, `find_open_duplicates`, `list_active_incidents` y `check_health` en `src/application/ports.py` según `specs/002-active-incidents-summary/contracts/incident-repository-port.md`
-- [ ] T009 Implementar `SQLiteIncidentRepository` en `src/adapters/outbound/sqlite_repository.py` con el esquema heredado, índice `idx_incidents_component_status` e `INNER JOIN sla_policies`, mapeando data-model.md `incidents.incident_id`, data-model.md `incidents.title`, data-model.md `incidents.component`, data-model.md `incidents.severity`, data-model.md `incidents.status`, data-model.md `incidents.created_at`, data-model.md `incidents.resolved_at`, data-model.md `sla_policies.severity`, data-model.md `sla_policies.max_resolution_minutes` y data-model.md `sla_policies.operates_24x7`. `find_open_duplicates` devuelve `[]` (depends on T008)
-- [ ] T010 [P] Implementar `create_incident_repository` en `src/adapters/outbound/factory.py` leyendo `DATABASE_URL` con default `sqlite:///:memory:` y sin repetir la URL en el `ValueError` de esquema no soportado (depends on T009)
-- [ ] T011 [P] Añadir `test_sqlite_repository_satisfies_incident_repository_port` en `tests/test_spec_002_summary.py` comprobando `isinstance` de `SQLiteIncidentRepository` frente a `IncidentRepositoryPort` sobre un archivo SQLite de `tmp_path` (depends on T009)
+- [X] T007 [P] Declarar los dataclasses `ActiveIncidentView` y `ActiveIncidentsSummary` y la función `parse_reference_time` en `src/application/services.py` según data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (`None` si el argumento viene omitido; `datetime.fromisoformat` si es naive; `ValidationError` si está vacío, si trae desplazamiento o si `fromisoformat` falla)
+- [X] T008 Definir `IncidentRepositoryPort` con `@runtime_checkable` y los métodos `save_incident`, `get_incident`, `find_open_duplicates`, `list_active_incidents` y `check_health` en `src/application/ports.py` según `specs/002-active-incidents-summary/contracts/incident-repository-port.md`
+- [X] T009 Implementar `SQLiteIncidentRepository` en `src/adapters/outbound/sqlite_repository.py` con el esquema heredado, índice `idx_incidents_component_status` e `INNER JOIN sla_policies`, mapeando data-model.md `incidents.incident_id`, data-model.md `incidents.title`, data-model.md `incidents.component`, data-model.md `incidents.severity`, data-model.md `incidents.status`, data-model.md `incidents.created_at`, data-model.md `incidents.resolved_at`, data-model.md `sla_policies.severity`, data-model.md `sla_policies.max_resolution_minutes` y data-model.md `sla_policies.operates_24x7`. `find_open_duplicates` devuelve `[]` (depends on T008)
+- [X] T010 [P] Implementar `create_incident_repository` en `src/adapters/outbound/factory.py` leyendo `DATABASE_URL` con default `sqlite:///:memory:` y sin repetir la URL en el `ValueError` de esquema no soportado (depends on T009)
+- [X] T011 [P] Añadir `test_sqlite_repository_satisfies_incident_repository_port` en `tests/test_spec_002_summary.py` comprobando `isinstance` de `SQLiteIncidentRepository` frente a `IncidentRepositoryPort` sobre un archivo SQLite de `tmp_path` (depends on T009)
 
 **Checkpoint**: El puerto se cumple, la fábrica abre SQLite y el parseo de instantes existe. El resumen de operador todavía no está expuesto.
 
@@ -61,15 +61,15 @@ description: "Task list for H002 active incidents summary"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T012 [US1] Escribir `test_bdd_global_summary_excludes_inactive` en `tests/test_spec_002_summary.py` sembrando el catálogo de aceptación con `save_incident` en un SQLite de archivo aislado y exigiendo `200` con data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` del caso global
-- [ ] T013 [US1] Escribir `test_bdd_cli_summary_matches_http` en `tests/test_spec_002_summary.py` comparando el JSON parseado de `summary --reference-time` con el `GET` sobre el mismo archivo y el mismo instante (depends on T012)
+- [X] T012 [US1] Escribir `test_bdd_global_summary_excludes_inactive` en `tests/test_spec_002_summary.py` sembrando el catálogo de aceptación con `save_incident` en un SQLite de archivo aislado y exigiendo `200` con data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` del caso global
+- [X] T013 [US1] Escribir `test_bdd_cli_summary_matches_http` en `tests/test_spec_002_summary.py` comparando el JSON parseado de `summary --reference-time` con el `GET` sobre el mismo archivo y el mismo instante (depends on T012)
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implementar `IncidentService.get_active_incidents_summary` en `src/application/services.py` para el camino global (`component_filter` ausente), evaluando el SLA solo con `evaluate_sla_status` y rellenando data-model.md `SLAEvaluation.elapsed_minutes`, data-model.md `SLAEvaluation.is_breached`, data-model.md `SLAEvaluation.requires_escalation`, data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (depends on T007, T009)
-- [ ] T015 [US1] Añadir `ActiveIncidentItem` y `ActiveIncidentsSummaryResponse` en `src/adapters/inbound/api/schemas.py` como espejo Pydantic de data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents`
-- [ ] T016 [P] [US1] Exponer `GET /api/v1/incidents/summary` en `src/adapters/inbound/api/app.py`, con el repositorio de aplicación creado una vez vía `src/adapters/outbound/factory.py`, pasando un `reference_time` válido al servicio y respondiendo `200` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T010, T014, T015)
-- [ ] T017 [P] [US1] Añadir el comando `summary` en `src/adapters/inbound/cli.py` con `--reference-time`, serializando `ActiveIncidentsSummaryResponse` a stdout y código `0` según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T010, T014, T015)
+- [X] T014 [US1] Implementar `IncidentService.get_active_incidents_summary` en `src/application/services.py` para el camino global (`component_filter` ausente), evaluando el SLA solo con `evaluate_sla_status` y rellenando data-model.md `SLAEvaluation.elapsed_minutes`, data-model.md `SLAEvaluation.is_breached`, data-model.md `SLAEvaluation.requires_escalation`, data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (depends on T007, T009)
+- [X] T015 [US1] Añadir `ActiveIncidentItem` y `ActiveIncidentsSummaryResponse` en `src/adapters/inbound/api/schemas.py` como espejo Pydantic de data-model.md `ActiveIncidentView.incident_id`, data-model.md `ActiveIncidentView.title`, data-model.md `ActiveIncidentView.component`, data-model.md `ActiveIncidentView.severity`, data-model.md `ActiveIncidentView.status`, data-model.md `ActiveIncidentView.elapsed_minutes`, data-model.md `ActiveIncidentView.requires_escalation`, data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents`
+- [X] T016 [P] [US1] Exponer `GET /api/v1/incidents/summary` en `src/adapters/inbound/api/app.py`, con el repositorio de aplicación creado una vez vía `src/adapters/outbound/factory.py`, pasando un `reference_time` válido al servicio y respondiendo `200` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T010, T014, T015)
+- [X] T017 [P] [US1] Añadir el comando `summary` en `src/adapters/inbound/cli.py` con `--reference-time`, serializando `ActiveIncidentsSummaryResponse` a stdout y código `0` según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T010, T014, T015)
 
 **Checkpoint**: El resumen global y la paridad CLI funcionan sin filtro de componente.
 
@@ -83,13 +83,13 @@ description: "Task list for H002 active incidents summary"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T018 [US2] Escribir `test_bdd_summary_filtered_by_component` en `tests/test_spec_002_summary.py` para `GET /api/v1/incidents/summary?component=payments-gateway&reference_time=2026-11-20T12:00:00` según el subconjunto de `specs/002-active-incidents-summary/data-model.md`
+- [X] T018 [US2] Escribir `test_bdd_summary_filtered_by_component` en `tests/test_spec_002_summary.py` para `GET /api/v1/incidents/summary?component=payments-gateway&reference_time=2026-11-20T12:00:00` según el subconjunto de `specs/002-active-incidents-summary/data-model.md`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Aplicar el filtro en `get_active_incidents_summary` de `src/application/services.py`: tras `strip`, `None` o vacío llama a `list_active_incidents(None)`; cualquier otro valor usa coincidencia exacta de data-model.md `Incident.component` (depends on T014)
-- [ ] T020 [P] [US2] Aceptar el query `component` en `GET /api/v1/incidents/summary` dentro de `src/adapters/inbound/api/app.py` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T019)
-- [ ] T021 [P] [US2] Aceptar `--component` en el comando `summary` de `src/adapters/inbound/cli.py` según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T019)
+- [X] T019 [US2] Aplicar el filtro en `get_active_incidents_summary` de `src/application/services.py`: tras `strip`, `None` o vacío llama a `list_active_incidents(None)`; cualquier otro valor usa coincidencia exacta de data-model.md `Incident.component` (depends on T014)
+- [X] T020 [P] [US2] Aceptar el query `component` en `GET /api/v1/incidents/summary` dentro de `src/adapters/inbound/api/app.py` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T019)
+- [X] T021 [P] [US2] Aceptar `--component` en el comando `summary` de `src/adapters/inbound/cli.py` según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T019)
 
 **Checkpoint**: El resumen global de US1 sigue igual y el filtro devuelve solo el componente pedido.
 
@@ -103,12 +103,12 @@ description: "Task list for H002 active incidents summary"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T022 [US3] Escribir `test_bdd_empty_active_summary` en `tests/test_spec_002_summary.py` para catálogo sin activos y para componente desconocido: `GET` responde `200` y `summary` termina en `0`, con el mismo JSON vacío, según FR-009 y el contrato HTTP
+- [X] T022 [US3] Escribir `test_bdd_empty_active_summary` en `tests/test_spec_002_summary.py` para catálogo sin activos y para componente desconocido: `GET` responde `200` y `summary` termina en `0`, con el mismo JSON vacío, según FR-009 y el contrato HTTP
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Devolver agregados en cero desde `get_active_incidents_summary` en `src/application/services.py` cuando no hay filas activas, manteniendo data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (depends on T014, T019)
-- [ ] T024 [US3] Responder `200` con ese cuerpo vacío desde `GET /api/v1/incidents/summary` en `src/adapters/inbound/api/app.py` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T023)
+- [X] T023 [US3] Devolver agregados en cero desde `get_active_incidents_summary` en `src/application/services.py` cuando no hay filas activas, manteniendo data-model.md `ActiveIncidentsSummary.total_active`, data-model.md `ActiveIncidentsSummary.breached_count` y data-model.md `ActiveIncidentsSummary.incidents` (depends on T014, T019)
+- [X] T024 [US3] Responder `200` con ese cuerpo vacío desde `GET /api/v1/incidents/summary` en `src/adapters/inbound/api/app.py` según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T023)
 
 **Checkpoint**: La ausencia de activos no se convierte en 404, 422 ni en salida de error del CLI.
 
@@ -122,12 +122,12 @@ description: "Task list for H002 active incidents summary"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T025 [US4] Escribir `test_bdd_invalid_reference_time_rejected` en `tests/test_spec_002_summary.py` ejercitando el query HTTP y `--reference-time` del CLI con el mismo valor ilegible, según `specs/002-active-incidents-summary/spec.md` escenario 5
+- [X] T025 [US4] Escribir `test_bdd_invalid_reference_time_rejected` en `tests/test_spec_002_summary.py` ejercitando el query HTTP y `--reference-time` del CLI con el mismo valor ilegible, según `specs/002-active-incidents-summary/spec.md` escenario 5
 
 ### Implementation for User Story 4
 
-- [ ] T026 [P] [US4] Traducir `ValidationError` de `parse_reference_time` a `422` con `{"detail": ...}` en `src/adapters/inbound/api/app.py` sin calcular el resumen, según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T007, T016)
-- [ ] T027 [P] [US4] Traducir esa misma `ValidationError` a stderr y salida `1` en `src/adapters/inbound/cli.py` sin imprimir el JSON del resumen, según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T007, T017)
+- [X] T026 [P] [US4] Traducir `ValidationError` de `parse_reference_time` a `422` con `{"detail": ...}` en `src/adapters/inbound/api/app.py` sin calcular el resumen, según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md` (depends on T007, T016)
+- [X] T027 [P] [US4] Traducir esa misma `ValidationError` a stderr y salida `1` en `src/adapters/inbound/cli.py` sin imprimir el JSON del resumen, según `specs/002-active-incidents-summary/contracts/cli-summary.md` (depends on T007, T017)
 
 **Checkpoint**: Un instante válido sigue devolviendo el resumen de US1–US3; uno ilegible se rechaza en los dos canales.
 
@@ -137,9 +137,9 @@ description: "Task list for H002 active incidents summary"
 
 **Purpose**: Retirar el N+1 de la ruta de persistencia y cerrar la validación del quickstart
 
-- [ ] T028 [P] Delegar el benchmark de `src/incident_repository.py` en `SQLiteIncidentRepository` (`seed_synthetic_incidents`, `list_active_incidents` y `evaluate_sla_status`) y actualizar la fila N+1 de `AGENTS.md`
-- [ ] T029 [P] Conservar `GET /health` en `src/adapters/inbound/api/app.py` respondiendo `{"status": "ok"}` sin llamar a `check_health`, según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md`
-- [ ] T030 Ejecutar la validación de `specs/002-active-incidents-summary/quickstart.md`: `uv run ruff check src/`, `uv run pytest -v` y los módulos `src.domain.triage_rules` y `src.domain.sla_calculator`
+- [X] T028 [P] Delegar el benchmark de `src/incident_repository.py` en `SQLiteIncidentRepository` (`seed_synthetic_incidents`, `list_active_incidents` y `evaluate_sla_status`) y actualizar la fila N+1 de `AGENTS.md`
+- [X] T029 [P] Conservar `GET /health` en `src/adapters/inbound/api/app.py` respondiendo `{"status": "ok"}` sin llamar a `check_health`, según `specs/002-active-incidents-summary/contracts/http-get-incidents-summary.md`
+- [X] T030 Ejecutar la validación de `specs/002-active-incidents-summary/quickstart.md`: `uv run ruff check src/`, `uv run pytest -v` y los módulos `src.domain.triage_rules` y `src.domain.sla_calculator`
 
 ---
 

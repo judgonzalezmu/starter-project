@@ -22,3 +22,27 @@ class TriageResponse(BaseModel):
     recommended_team: str
     duplicate_group_key: str
     consistency_ratio: float
+
+
+class ActiveIncidentItem(BaseModel):
+    """Ítem de transporte del resumen de activos."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    incident_id: str
+    title: str
+    component: str
+    severity: str
+    status: str
+    elapsed_minutes: int
+    requires_escalation: bool
+
+
+class ActiveIncidentsSummaryResponse(BaseModel):
+    """Cuerpo JSON de `GET /api/v1/incidents/summary` y del CLI `summary`."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    total_active: int
+    breached_count: int
+    incidents: list[ActiveIncidentItem]
