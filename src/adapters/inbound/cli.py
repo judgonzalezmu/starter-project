@@ -15,6 +15,7 @@ from src.adapters.inbound.api.schemas import (
     SLAEvaluationResponse,
 )
 from src.adapters.outbound.factory import create_incident_repository
+from src.application.ports import PersistenceUnavailableError
 from src.application.services import (
     IncidentAlreadyExistsError,
     IncidentNotFoundError,
@@ -25,7 +26,9 @@ from src.application.services import (
 )
 from src.domain.triage_rules import SAMPLE_DATA_PATH, classify_incident_report
 
-app = typer.Typer(help="IncidentOps CLI — triaje, alta, resumen y SLA.")
+app = typer.Typer(help="IncidentOps CLI — triaje, alta, resumen, SLA y salud.")
+
+_PERSISTENCE_UNAVAILABLE_DETAIL = "El almacén de datos no está disponible."
 
 
 def _json_default(value: object) -> str:
@@ -46,6 +49,21 @@ def triage(
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(json.dumps(asdict(result), ensure_ascii=False))
+
+
+@app.command("health")
+def health() -> None:
+    """Comprueba la conectividad del almacén e imprime el JSON operativo."""
+    try:
+        service = IncidentService(create_incident_repository())
+        result = service.check_operational_health()
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    payload = {"status": result.status, "database": result.database}
+    typer.echo(json.dumps(payload, ensure_ascii=False))
+    if result.status != "ok":
+        raise typer.Exit(code=1)
 
 
 @app.command("create")
@@ -82,6 +100,12 @@ def create(
             status=status,
             resolved_at=parsed_resolved,
         )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except PersistenceUnavailableError as exc:
+        typer.echo(_PERSISTENCE_UNAVAILABLE_DETAIL, err=True)
+        raise typer.Exit(code=1) from exc
     except (ValidationError, IncidentAlreadyExistsError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -105,6 +129,12 @@ def sla(
         parsed = parse_reference_time(reference_time)
         service = IncidentService(create_incident_repository())
         evaluation = service.evaluate_incident_sla(incident_id, parsed)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except PersistenceUnavailableError as exc:
+        typer.echo(_PERSISTENCE_UNAVAILABLE_DETAIL, err=True)
+        raise typer.Exit(code=1) from exc
     except (ValidationError, IncidentNotFoundError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -133,6 +163,12 @@ def summary(
             component_filter=component,
             reference_time=parsed,
         )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except PersistenceUnavailableError as exc:
+        typer.echo(_PERSISTENCE_UNAVAILABLE_DETAIL, err=True)
+        raise typer.Exit(code=1) from exc
     except ValidationError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 from src.adapters.inbound.api.schemas import (
     ActiveIncidentsSummaryResponse,
@@ -13,6 +14,7 @@ from src.adapters.inbound.api.schemas import (
     TriageResponse,
 )
 from src.adapters.outbound.factory import create_incident_repository
+from src.application.ports import PersistenceUnavailableError
 from src.application.services import (
     IncidentAlreadyExistsError,
     IncidentNotFoundError,
@@ -22,6 +24,8 @@ from src.application.services import (
     parse_reference_time,
 )
 
+_PERSISTENCE_UNAVAILABLE_DETAIL = "El almacén de datos no está disponible."
+
 
 def create_app() -> FastAPI:
     """Factory de la API HTTP. El repositorio se crea una vez por proceso."""
@@ -29,8 +33,11 @@ def create_app() -> FastAPI:
     app = FastAPI(title="IncidentOps", version="0.1.0")
 
     @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    def health() -> JSONResponse:
+        result = service.check_operational_health()
+        payload = {"status": result.status, "database": result.database}
+        status_code = 200 if result.status == "ok" else 503
+        return JSONResponse(content=payload, status_code=status_code)
 
     @app.post("/api/v1/incidents/triage", response_model=TriageResponse)
     def triage_incident(body: TriageRequest) -> TriageResponse:
@@ -65,6 +72,10 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except IncidentAlreadyExistsError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except PersistenceUnavailableError as exc:
+            raise HTTPException(
+                status_code=503, detail=_PERSISTENCE_UNAVAILABLE_DETAIL
+            ) from exc
         return IncidentCreatedResponse.model_validate(
             {
                 **result.__dict__,
@@ -87,6 +98,10 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except IncidentNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PersistenceUnavailableError as exc:
+            raise HTTPException(
+                status_code=503, detail=_PERSISTENCE_UNAVAILABLE_DETAIL
+            ) from exc
         return SLAEvaluationResponse.model_validate(evaluation)
 
     @app.get("/api/v1/incidents/summary", response_model=ActiveIncidentsSummaryResponse)
@@ -96,12 +111,16 @@ def create_app() -> FastAPI:
     ) -> ActiveIncidentsSummaryResponse:
         try:
             parsed = parse_reference_time(reference_time)
+            summary = service.get_active_incidents_summary(
+                component_filter=component,
+                reference_time=parsed,
+            )
         except ValidationError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        summary = service.get_active_incidents_summary(
-            component_filter=component,
-            reference_time=parsed,
-        )
+        except PersistenceUnavailableError as exc:
+            raise HTTPException(
+                status_code=503, detail=_PERSISTENCE_UNAVAILABLE_DETAIL
+            ) from exc
         return ActiveIncidentsSummaryResponse.model_validate(summary)
 
     return app

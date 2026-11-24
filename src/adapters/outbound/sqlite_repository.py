@@ -9,6 +9,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta
 
+from src.application.ports import PersistenceUnavailableError
 from src.domain.models import Incident, SeverityLevel
 from src.domain.sla_calculator import SLA_POLICY_TABLE
 
@@ -103,59 +104,81 @@ class SQLiteIncidentRepository:
         self._connection.commit()
 
     def save_incident(self, incident: Incident) -> None:
-        self._connection.execute(
-            """
-            INSERT OR REPLACE INTO incidents
-                (incident_id, title, component, severity, status, created_at,
-                 resolved_at, raw_text, recommended_team, duplicate_group_key)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                incident.incident_id,
-                incident.title,
-                incident.component,
-                incident.severity,
-                incident.status,
-                incident.created_at.isoformat(),
-                incident.resolved_at.isoformat() if incident.resolved_at else None,
-                incident.raw_text,
-                incident.recommended_team,
-                incident.duplicate_group_key,
-            ),
-        )
-        self._connection.commit()
+        try:
+            self._connection.execute(
+                """
+                INSERT OR REPLACE INTO incidents
+                    (incident_id, title, component, severity, status, created_at,
+                     resolved_at, raw_text, recommended_team, duplicate_group_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    incident.incident_id,
+                    incident.title,
+                    incident.component,
+                    incident.severity,
+                    incident.status,
+                    incident.created_at.isoformat(),
+                    incident.resolved_at.isoformat() if incident.resolved_at else None,
+                    incident.raw_text,
+                    incident.recommended_team,
+                    incident.duplicate_group_key,
+                ),
+            )
+            self._connection.commit()
+        except sqlite3.Error as exc:
+            raise PersistenceUnavailableError(
+                "El almacén de datos no está disponible."
+            ) from exc
 
     def get_incident(self, incident_id: str) -> Incident | None:
-        row = self._connection.execute(
-            f"""
-            SELECT {_INCIDENT_COLUMNS}
-            FROM incidents AS i
-            WHERE i.incident_id = ?
-            """,
-            (incident_id,),
-        ).fetchone()
+        try:
+            row = self._connection.execute(
+                f"""
+                SELECT {_INCIDENT_COLUMNS}
+                FROM incidents AS i
+                WHERE i.incident_id = ?
+                """,
+                (incident_id,),
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise PersistenceUnavailableError(
+                "El almacén de datos no está disponible."
+            ) from exc
         if row is None:
             return None
         return _incident_from_row(row)
 
     def find_open_duplicates(self, duplicate_group_key: str) -> list[Incident]:
         placeholders = ", ".join("?" for _ in _OPEN_DUPLICATE_STATUSES)
-        rows = self._connection.execute(
-            f"""
-            SELECT {_INCIDENT_COLUMNS}
-            FROM incidents AS i
-            WHERE i.duplicate_group_key = ?
-              AND i.status IN ({placeholders})
-            """,
-            (duplicate_group_key, *_OPEN_DUPLICATE_STATUSES),
-        ).fetchall()
+        try:
+            rows = self._connection.execute(
+                f"""
+                SELECT {_INCIDENT_COLUMNS}
+                FROM incidents AS i
+                WHERE i.duplicate_group_key = ?
+                  AND i.status IN ({placeholders})
+                """,
+                (duplicate_group_key, *_OPEN_DUPLICATE_STATUSES),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            raise PersistenceUnavailableError(
+                "El almacén de datos no está disponible."
+            ) from exc
         return [_incident_from_row(row) for row in rows]
 
     def list_active_incidents(self, component_filter: str | None = None) -> list[Incident]:
-        if component_filter is None:
-            rows = self._connection.execute(_ACTIVE_COLUMNS).fetchall()
-        else:
-            rows = self._connection.execute(_ACTIVE_BY_COMPONENT, (component_filter,)).fetchall()
+        try:
+            if component_filter is None:
+                rows = self._connection.execute(_ACTIVE_COLUMNS).fetchall()
+            else:
+                rows = self._connection.execute(
+                    _ACTIVE_BY_COMPONENT, (component_filter,)
+                ).fetchall()
+        except sqlite3.Error as exc:
+            raise PersistenceUnavailableError(
+                "El almacén de datos no está disponible."
+            ) from exc
         return [_incident_from_row(row) for row in rows]
 
     def check_health(self) -> bool:

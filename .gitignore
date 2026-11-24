@@ -8,6 +8,7 @@ dist/
 .env
 *.db
 .pytest_cache/
+.ruff_cache/
 .vscode/
 .idea/
 .DS_Store

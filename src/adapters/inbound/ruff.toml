@@ -5,5 +5,7 @@ ban-relative-imports = "parents"
 
 [lint.flake8-tidy-imports.banned-api]
 sqlite3 = { msg = "El inbound no abre SQLite; usa la fábrica outbound." }
+psycopg = { msg = "El inbound no abre PostgreSQL; usa la fábrica outbound." }
 sqlalchemy = { msg = "El inbound no depende de un ORM." }
 "src.adapters.outbound.sqlite_repository" = { msg = "El inbound no construye el repositorio concreto." }
+"src.adapters.outbound.postgres_repository" = { msg = "El inbound no construye el repositorio concreto." }

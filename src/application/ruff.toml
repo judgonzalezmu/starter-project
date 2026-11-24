@@ -9,6 +9,7 @@ typer = { msg = "La aplicación no depende de Typer." }
 pydantic = { msg = "La aplicación no depende de esquemas Pydantic." }
 uvicorn = { msg = "La aplicación no depende de uvicorn." }
 sqlite3 = { msg = "La aplicación no accede a SQLite." }
+psycopg = { msg = "La aplicación no accede a PostgreSQL." }
 sqlalchemy = { msg = "La aplicación no depende de un ORM." }
 httpx = { msg = "La aplicación no depende de clientes HTTP." }
 "src.adapters" = { msg = "La aplicación no importa adaptadores." }

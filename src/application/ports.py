@@ -7,6 +7,10 @@ from typing import Protocol, runtime_checkable
 from src.domain.models import Incident
 
 
+class PersistenceUnavailableError(Exception):
+    """El almacén no pudo completar la operación (driver/red). No inventar datos."""
+
+
 @runtime_checkable
 class IncidentRepositoryPort(Protocol):
     """Contrato de persistencia de incidentes. La aplicación no conoce el motor."""

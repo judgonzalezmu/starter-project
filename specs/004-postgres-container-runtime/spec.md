@@ -113,7 +113,7 @@ Un desarrollador o operador necesita **cambiar entre SQLite (local/pruebas) y Po
 
 **Acceptance Scenarios**:
 
-1. **Given** `DATABASE_URL` con esquema `postgresql://...`, **When** el servicio resuelve el almacén, **Then** usa el adaptador PostgreSQL y las operaciones de persistencia existentes (alta, resumen, SLA) funcionan contra ese motor.
+1. **Given** `DATABASE_URL` con esquema `postgresql://...`, **When** el servicio resuelve el almacén, **Then** usa el adaptador PostgreSQL (mismo puerto que SQLite; sin fallback a memoria). La verificación automatizada demuestra la selección sin Compose; el smoke documentado cubre alta/SLA/resumen contra `db` cuando hay runtime de contenedores.
 2. **Given** `DATABASE_URL` con esquema `sqlite:///...` (archivo o memoria), **When** el servicio resuelve el almacén, **Then** usa el adaptador SQLite.
 3. **Given** que `DATABASE_URL` **no** está definida, **When** el servicio resuelve el almacén, **Then** usa `sqlite:///:memory:` por defecto.
 
@@ -129,7 +129,7 @@ Un operador necesita levantar **API y base dedicada** con un único manifiesto r
 
 **Acceptance Scenarios**:
 
-1. **Given** el manifiesto de orquestación del proyecto, **When** el operador arranca los servicios `api` y `db`, **Then** `db` queda sano según `pg_isready`, `api` arranca solo tras `db` sano, usa `DATABASE_URL` hacia `db`, y su healthcheck sobre `/health` reporta conectividad operativa.
+1. **Given** el manifiesto de orquestación del proyecto, **When** se valida el contrato de orquestación (y, si hay runtime, el smoke documentado), **Then** los artefactos cumplen Dockerfile / `.dockerignore` / `api`+`db` con `pg_isready`, `depends_on: service_healthy` y healthcheck `/health`; el arranque real queda fuera del gate de pytest (Escenario 4).
 2. **Given** el artefacto de imagen de la API, **When** se construye la imagen, **Then** el build usa `uv` sobre `python:3.12-slim` y un `.dockerignore` que mantiene el contexto limpio.
 
 ---
@@ -173,7 +173,8 @@ Fuente de verdad de aceptación mínima (≥4). El lenguaje es operativo/de prod
 
 - HTTP responde `503 Service Unavailable` con cuerpo `{"status": "error", "database": "unavailable"}`;
 - CLI termina con código de salida `1` e imprime el mismo JSON de negocio;
-- la respuesta no expone credenciales ni la cadena de conexión.
+- la respuesta no expone credenciales ni la cadena de conexión;
+- en el mismo estado de indisponibilidad, alta/resumen/SLA fallan de forma explícita sin inventar datos (cuerpo distinto del JSON de `/health`; ver FR-017).
 
 ### Escenario 3 — Selección transparente SQLite / PostgreSQL vía `DATABASE_URL`
 
@@ -253,7 +254,7 @@ Fuente de verdad de aceptación mínima (≥4). El lenguaje es operativo/de prod
 - **SC-002**: En el 100% de los casos con fallo de conectividad simulado o real, HTTP `/health` responde `503` y CLI `health` exit `1` con `status=error` y `database=unavailable`, sin filtrar secretos; las operaciones de negocio en el mismo estado fallan de forma explícita sin inventar datos.
 - **SC-003**: En el 100% de las resoluciones de almacén, `postgresql://` selecciona PostgreSQL, `sqlite:///` selecciona SQLite, y la ausencia de `DATABASE_URL` usa memoria SQLite.
 - **SC-004**: El repositorio incluye el manifiesto completo de orquestación (sección 6). Cuando hay runtime de contenedores, un operador puede arrancar `api` + `db` y obtener `/health` operativo (`database=connected`) con el smoke documentado; la suite automatizada no exige Compose como gate.
-- **SC-005**: El 100% de las operaciones de negocio equivalentes (misma alta / resumen / SLA) producen el mismo resultado de negocio observable al cambiar solo el motor vía `DATABASE_URL` (paridad de contrato de puerto).
+- **SC-005**: El 100% de las resoluciones de almacén mantienen el mismo contrato de puerto (alta / resumen / SLA) al cambiar solo el motor vía `DATABASE_URL`. La paridad de resultado observable contra PostgreSQL vivo se demuestra con el smoke de Compose documentado; la suite automatizada no exige un servidor PostgreSQL.
 - **SC-006**: El 100% de los intentos de arranque/resolución con `DATABASE_URL` vacía o esquema no soportado fallan de inmediato (sin aceptar operaciones) y omiten el valor literal de la URL en el mensaje.
 - **SC-007**: Las suites de aceptación que no requieren motor dedicado completan su verificación contra SQLite sin levantar el servicio `db`.
 

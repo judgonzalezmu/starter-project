@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from src.application.ports import IncidentRepositoryPort
 from src.domain.models import (
@@ -34,6 +35,14 @@ class IncidentNotFoundError(Exception):
 
 class IncidentAlreadyExistsError(Exception):
     """El `incident_id` ya está registrado; no se sobrescribe."""
+
+
+@dataclass(frozen=True)
+class OperationalHealth:
+    """Estado operativo del almacén observable por HTTP y CLI."""
+
+    status: Literal["ok", "error"]
+    database: Literal["connected", "unavailable"]
 
 
 @dataclass(frozen=True)
@@ -123,6 +132,12 @@ class IncidentService:
 
     def __init__(self, repository: IncidentRepositoryPort) -> None:
         self._repository = repository
+
+    def check_operational_health(self) -> OperationalHealth:
+        """Comprueba conectividad real del almacén (`SELECT 1` en el adaptador)."""
+        if self._repository.check_health():
+            return OperationalHealth(status="ok", database="connected")
+        return OperationalHealth(status="error", database="unavailable")
 
     @staticmethod
     def triage_incident(incident_id: str, raw_text: str) -> TriageResult:
