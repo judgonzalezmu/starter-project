@@ -12,15 +12,21 @@ from datetime import datetime, timedelta
 from src.domain.models import Incident, SeverityLevel
 from src.domain.sla_calculator import SLA_POLICY_TABLE
 
-_ACTIVE_COLUMNS = """
-SELECT i.incident_id, i.title, i.component, i.severity, i.status,
-       i.created_at, i.resolved_at
+_INCIDENT_COLUMNS = """
+i.incident_id, i.title, i.component, i.severity, i.status,
+i.created_at, i.resolved_at, i.raw_text, i.recommended_team, i.duplicate_group_key
+"""
+
+_ACTIVE_COLUMNS = f"""
+SELECT {_INCIDENT_COLUMNS}
 FROM incidents AS i
 INNER JOIN sla_policies AS p ON p.severity = i.severity
 WHERE i.status IN ('OPEN', 'IN_PROGRESS')
 """
 
 _ACTIVE_BY_COMPONENT = _ACTIVE_COLUMNS + "  AND i.component = ?"
+
+_OPEN_DUPLICATE_STATUSES = ("OPEN", "IN_PROGRESS", "ESCALATION_REQUIRED")
 
 
 class SQLiteIncidentRepository:
@@ -53,14 +59,32 @@ class SQLiteIncidentRepository:
                 severity TEXT NOT NULL,
                 status TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                resolved_at TEXT
+                resolved_at TEXT,
+                raw_text TEXT NOT NULL DEFAULT '',
+                recommended_team TEXT,
+                duplicate_group_key TEXT
             )
             """
         )
+        for column_sql in (
+            "ALTER TABLE incidents ADD COLUMN raw_text TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE incidents ADD COLUMN recommended_team TEXT",
+            "ALTER TABLE incidents ADD COLUMN duplicate_group_key TEXT",
+        ):
+            try:
+                cursor.execute(column_sql)
+            except sqlite3.OperationalError:
+                pass
         cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_incidents_component_status
             ON incidents (component, status)
+            """
+        )
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_incidents_dup_key
+            ON incidents (duplicate_group_key, status)
             """
         )
         for rule in SLA_POLICY_TABLE.values():
@@ -82,8 +106,9 @@ class SQLiteIncidentRepository:
         self._connection.execute(
             """
             INSERT OR REPLACE INTO incidents
-                (incident_id, title, component, severity, status, created_at, resolved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (incident_id, title, component, severity, status, created_at,
+                 resolved_at, raw_text, recommended_team, duplicate_group_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 incident.incident_id,
@@ -93,16 +118,19 @@ class SQLiteIncidentRepository:
                 incident.status,
                 incident.created_at.isoformat(),
                 incident.resolved_at.isoformat() if incident.resolved_at else None,
+                incident.raw_text,
+                incident.recommended_team,
+                incident.duplicate_group_key,
             ),
         )
         self._connection.commit()
 
     def get_incident(self, incident_id: str) -> Incident | None:
         row = self._connection.execute(
-            """
-            SELECT incident_id, title, component, severity, status, created_at, resolved_at
-            FROM incidents
-            WHERE incident_id = ?
+            f"""
+            SELECT {_INCIDENT_COLUMNS}
+            FROM incidents AS i
+            WHERE i.incident_id = ?
             """,
             (incident_id,),
         ).fetchone()
@@ -111,7 +139,17 @@ class SQLiteIncidentRepository:
         return _incident_from_row(row)
 
     def find_open_duplicates(self, duplicate_group_key: str) -> list[Incident]:
-        return []
+        placeholders = ", ".join("?" for _ in _OPEN_DUPLICATE_STATUSES)
+        rows = self._connection.execute(
+            f"""
+            SELECT {_INCIDENT_COLUMNS}
+            FROM incidents AS i
+            WHERE i.duplicate_group_key = ?
+              AND i.status IN ({placeholders})
+            """,
+            (duplicate_group_key, *_OPEN_DUPLICATE_STATUSES),
+        ).fetchall()
+        return [_incident_from_row(row) for row in rows]
 
     def list_active_incidents(self, component_filter: str | None = None) -> list[Incident]:
         if component_filter is None:
@@ -140,7 +178,7 @@ class SQLiteIncidentRepository:
         statuses = ["RESOLVED", "RESOLVED", "RESOLVED", "OPEN", "IN_PROGRESS"]
         base_time = datetime(2026, 11, 1, 8, 0, 0)
 
-        rows: list[tuple[str, str, str, str, str, str, str | None]] = []
+        rows: list[tuple[str, str, str, str, str, str, str | None, str, None, None]] = []
         for idx in range(1, total_records + 1):
             severity = severities[idx % len(severities)]
             status = statuses[(idx * 3 + idx // 5) % len(statuses)]
@@ -158,14 +196,18 @@ class SQLiteIncidentRepository:
                     status,
                     created.isoformat(),
                     resolved,
+                    "",
+                    None,
+                    None,
                 )
             )
 
         self._connection.executemany(
             """
             INSERT OR REPLACE INTO incidents
-                (incident_id, title, component, severity, status, created_at, resolved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (incident_id, title, component, severity, status, created_at,
+                 resolved_at, raw_text, recommended_team, duplicate_group_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
@@ -174,6 +216,12 @@ class SQLiteIncidentRepository:
 
 def _incident_from_row(row: sqlite3.Row) -> Incident:
     resolved_at = row["resolved_at"]
+    keys = row.keys()
+    raw_text = row["raw_text"] if "raw_text" in keys and row["raw_text"] is not None else ""
+    recommended_team = row["recommended_team"] if "recommended_team" in keys else None
+    duplicate_group_key = (
+        row["duplicate_group_key"] if "duplicate_group_key" in keys else None
+    )
     return Incident(
         incident_id=row["incident_id"],
         title=row["title"],
@@ -182,4 +230,7 @@ def _incident_from_row(row: sqlite3.Row) -> Incident:
         status=row["status"],
         created_at=datetime.fromisoformat(row["created_at"]),
         resolved_at=datetime.fromisoformat(resolved_at) if resolved_at else None,
+        raw_text=raw_text,
+        recommended_team=recommended_team,  # type: ignore[arg-type]
+        duplicate_group_key=duplicate_group_key,
     )

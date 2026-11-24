@@ -61,17 +61,29 @@ def _elapsed_seconds(start: datetime, end: datetime, operates_24x7: bool) -> flo
     return _business_elapsed_seconds(start, end)
 
 
+def _ensure_comparable_naive(dt: datetime) -> datetime:
+    """Normaliza a naive de reloj de pared (laboratorio); no inventa zona horaria."""
+    if dt.tzinfo is not None:
+        return dt.replace(tzinfo=None)
+    return dt
+
+
 def evaluate_sla_status(incident: Incident, reference_time: datetime) -> SLAEvaluation:
     """Evalúa incumplimiento y escalamiento preventivo según ADR-002."""
     rule = get_sla_rule_for_severity(incident.severity)
-    end_time = incident.resolved_at or reference_time
+    created_at = _ensure_comparable_naive(incident.created_at)
+    reference_time = _ensure_comparable_naive(reference_time)
+    resolved_at = (
+        _ensure_comparable_naive(incident.resolved_at)
+        if incident.resolved_at is not None
+        else None
+    )
+    end_time = resolved_at or reference_time
 
-    if end_time < incident.created_at:
+    if end_time < created_at:
         raise ValueError("El tiempo de referencia no puede ser anterior a la creación.")
 
-    elapsed_seconds = _elapsed_seconds(
-        incident.created_at, end_time, rule.operates_24x7
-    )
+    elapsed_seconds = _elapsed_seconds(created_at, end_time, rule.operates_24x7)
     # Truncar a minutos enteros una sola vez al final (ADR-002).
     elapsed_minutes = int(elapsed_seconds // 60)
 

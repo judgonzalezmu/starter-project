@@ -11,9 +11,9 @@ Backend Python de **IncidentOps** (gestión de incidentes, triaje y SLA) usado c
 | `src/domain/models.py` | Tipos de dominio (`Incident`, `SLARule`, `TriageResult`, …) |
 | `src/domain/triage_rules.py` | Clasificación determinista + equipo + `duplicate_group_key` |
 | `src/domain/sla_calculator.py` | SLA 24/7 (P0/P1) vs. horario hábil Lun–Vie `[08:00,18:00)` (P2/P3); ADR-002 |
-| `src/application/services.py` | Casos de uso (`IncidentService.triage_incident`, `ValidationError`) |
-| `src/adapters/inbound/api/` | FastAPI: `create_app()`, `POST /api/v1/incidents/triage`, `GET /health` |
-| `src/adapters/inbound/cli.py` | Typer: subcomandos `triage` y `audit` |
+| `src/application/services.py` | Casos de uso (`triage_incident`, `create_incident`, `evaluate_incident_sla`, `get_active_incidents_summary`) |
+| `src/adapters/inbound/api/` | FastAPI: triage, `POST /api/v1/incidents`, `GET .../sla`, summary, `/health` |
+| `src/adapters/inbound/cli.py` | Typer: `triage`, `create`, `sla`, `summary`, `audit` |
 | `src/context_audit.py` | Auditoría de tokens (`tiktoken`) — fuerza bruta / grep / LSP |
 | `src/incident_repository.py` | Entrypoint del benchmark; delega en `SQLiteIncidentRepository` (JOIN, sin N+1) |
 | `data/sample_incidents.json` | 10 incidentes de prueba de triaje |
@@ -30,7 +30,10 @@ uv run python -m src.domain.triage_rules
 uv run python -m src.domain.sla_calculator
 uv run uvicorn src.adapters.inbound.api.app:create_app --factory --reload
 uv run python -m src.adapters.inbound.cli triage --incident-id INC-1001 --raw-text "..."
+uv run python -m src.adapters.inbound.cli create --title "..." --raw-text "..."
+uv run python -m src.adapters.inbound.cli sla --incident-id INC-... --reference-time 2026-11-09T09:00:00
 uv run pytest
+uv run pytest -v tests/test_spec_003_lifecycle_sla.py
 uv run python -m src.context_audit --symbol evaluate_sla_status
 uv run python -m src.context_audit --symbol classify_incident_report
 uv run python -m src.context_audit --compare-formats

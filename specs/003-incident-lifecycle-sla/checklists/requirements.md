@@ -33,4 +33,5 @@
 
 - Clarification session 2026-11-23 completed: create/SLA contracts, id collision (`409`), status catalog, `resolved_at` default and `resolved_at` < `created_at` rejection.
 - Channel paths/status codes are acceptance surfaces (parity Spec 001/002), not stack choices.
-- Ready for `/speckit-plan`.
+- Post-analyze remediation 2026-11-23: CLI `create` includes `--resolved-at` (parity with HTTP); tasks clarify timestamp parse helper, US1/US2 duplicate boundary, and illegible `reference_time` in T021.
+- Ready for `/speckit-implement`.

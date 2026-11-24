@@ -13,7 +13,7 @@ import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
-from src.domain.models import SeverityLevel, TriageResult
+from src.domain.models import SeverityLevel, TeamName, TriageResult
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SAMPLE_DATA_PATH = PROJECT_ROOT / "data" / "sample_incidents.json"
@@ -71,7 +71,7 @@ def classify_incident_report(incident_id: str, raw_text: str) -> TriageResult:
     def result(
         severity: SeverityLevel,
         component: str,
-        team: str,
+        team: TeamName,
         rationale: str,
         duplicate_key: str | None = None,
     ) -> TriageResult:

@@ -60,7 +60,7 @@ Esta spec es la **fuente de verdad** de aceptación del hito H003 ([`docs/ROADMA
 
 ## 4. Contrato CLI — creación
 
-- **Subcomando:** `create` con los mismos campos de negocio (`--title`, `--raw-text`, y opcionales `--incident-id`, `--created-at`, `--status`).
+- **Subcomando:** `create` con los mismos campos de negocio que HTTP (`--title`, `--raw-text`, y opcionales `--incident-id`, `--created-at`, `--status`, `--resolved-at`).
 - **Éxito:** código de salida `0`; imprime en stdout el mismo JSON de negocio que el cuerpo HTTP `201`.
 - **`title` / `raw_text` vacíos o solo espacios:** error y código de salida `1`; no persiste.
 - **`incident_id` ya existente:** código de salida `1`; no persiste ni sobrescribe.
@@ -291,6 +291,7 @@ sla --incident-id <id> --reference-time 2026-11-09T09:00:00
 - Catálogo de `status` en creación = `OPEN` | `IN_PROGRESS` | `ESCALATION_REQUIRED` | `RESOLVED`; default `OPEN`. Transiciones posteriores fuera de alcance.
 - Con `status=RESOLVED`, `resolved_at` opcional; si falta, `resolved_at = created_at`; si `resolved_at` < `created_at`, rechazo `422`.
 - Si `status` ≠ `RESOLVED`, un `resolved_at` enviado en creación se ignora (no se persiste como resuelto).
+- CLI `create` expone los mismos opcionales que HTTP, incluido `--resolved-at` (paridad FR-016).
 - Colisión de `incident_id` = conflicto de identidad (`409` / exit `1`), no actualización.
 - Mayúsculas/minúsculas de `HEX8` y detalle de generación se fijan en planificación si no afectan aceptación.
 - Existe (o se dispone) un almacén persistente consultable para demos y aceptación; el mecanismo concreto de almacenamiento se decide en planificación.
